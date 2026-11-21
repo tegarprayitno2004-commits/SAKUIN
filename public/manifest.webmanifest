@@ -1,0 +1,17 @@
+{
+  "name": "SAKUIN — Kelola Keuangan Anak Kos",
+  "short_name": "SAKUIN",
+  "description": "Aplikasi web pengelolaan keuangan mahasiswa dan anak kos Indonesia.",
+  "start_url": "/",
+  "display": "browser",
+  "background_color": "#ECFDF5",
+  "theme_color": "#047857",
+  "lang": "id",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

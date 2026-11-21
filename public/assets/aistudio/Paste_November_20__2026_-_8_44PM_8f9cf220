@@ -1,0 +1,202 @@
+ROLE
+You are a senior full-stack engineer, UI/UX designer, and Firebase architect working inside Google AI Studio Build Mode. BUILD A REAL, FULLY WORKING, PRODUCTION-QUALITY WEB APPLICATION NOW. Do not produce only a design, blueprint, documentation, or static prototype. Every feature below must be implemented, connected to Firebase, and verified. Do not ask me follow-up questions; make sensible decisions and state any assumptions in the README at the end.
+
+WEB-ONLY PLATFORM CONSTRAINT (HIGHEST PRIORITY, OVERRIDES ANYTHING BELOW IF THERE IS A CONFLICT)
+- Build SAKUIN exclusively as a WEBSITE (web-based application) that runs in standard web browsers and is reachable through ONE public URL.
+- Do NOT build or scaffold: a native Android app, a native iOS app, an APK/AAB, a Flutter app, a React Native/Expo app, a Capacitor/Cordova wrapper, an Electron or other desktop app, or any separately installed application.
+- Mobile users open the SAME website in their mobile browser (Chrome, Safari, etc.). "Mobile" in this prompt means a responsive mobile browser layout, not a mobile app. The phone-frame screens in the reference image are only a layout reference for narrow viewports.
+- Architecture: React + TypeScript (Vite) single-page website, Firebase Authentication + Cloud Firestore as the backend, Firebase Security Rules for access control, deployable to a public URL (Build Mode's publish/deploy, or Firebase Hosting / Cloud Run).
+- Use the same single URL for ALL users and ALL groups. Never create a separate site, subdomain, or deployment per user or per group. Data is separated only by authentication (UID), group membership, and Firestore Security Rules.
+- Fully responsive for desktop, tablet, and mobile browsers (test at roughly 360px, 768px, 1280px+). Support touch input and the mobile browser viewport (use the dynamic viewport unit `dvh` and safe-area insets so bottom navigation is not hidden by browser UI).
+- Optional and web-compatible only: a basic web app manifest and meta tags (theme-color, favicon, Open Graph) so the website looks polished when shared or bookmarked. A PWA service worker is NOT required; if added, it must never cache authenticated data insecurely. Do not promote or generate native app packages.
+- Prioritize a complete, functional, secure, production-ready website over cosmetic extras.
+
+PRODUCT
+- Name: SAKUIN. Tagline: "Kelola Keuangan, Raih Masa Depan."
+- A personal and group finance-management website for Indonesian university students, especially boarding-house (anak kos) residents. It helps them make weekly or monthly allowances last until the period ends.
+- Example: a student receives Rp300.000 for one week, creates a budget, logs every expense, monitors the balance, and gets warnings as spending approaches or exceeds the budget.
+- ALL UI TEXT, labels, validation messages, notifications, empty states, and content must be in INDONESIAN. Code, comments, and identifiers are in English.
+- Currency: IDR, formatted as "Rp300.000" (Intl.NumberFormat 'id-ID', no decimals). Store money as integer rupiah, never floats.
+- Timezone: Asia/Jakarta (UTC+7) everywhere. Dates are displayed as "20 Nov 2026" in Indonesian locale.
+
+REFERENCE DESIGN (attached image "Peta Alur Layar Aplikasi Sakuin")
+Use it as the primary reference for page structure, navigation, and features, but elevate the visual quality to a modern fintech startup website. Implement these 9 screens (as responsive web pages) plus Premium and Akad:
+1. Splash Screen: logo (house icon), "Sakuin", tagline, soft green illustration, short animated intro (~1.5s) then route to login or dashboard depending on auth state.
+2. Login / Daftar: tab switch Login | Daftar, email + password (show/hide toggle), "Ingat saya", "Lupa password?", primary "Masuk" button, divider "atau", "Daftar dengan Google". Register collects name, email, password, confirm password.
+3. Beranda / Dashboard: greeting "Hai, {name}", motivational line, available balance card, Pemasukan and Pengeluaran summary cards, "Ringkasan Minggu/Bulan" with a circular progress ring (% budget used) plus total budget, spent, remaining; quick actions (Tambah, Anggaran, Riwayat, Laporan); recent transactions; budget alerts; income vs expense chart; period selector (Minggu ini, Bulan ini, Pilih rentang tanggal); workspace switcher (Pribadi / group names). Replace the reference's "Top Up" button with "Tambah Pemasukan" (no real top-up or payment).
+4. Pencatatan Transaksi ("Tambah Transaksi"): toggle Pemasukan | Pengeluaran, category select, nominal (Rp input with live thousand separators), date picker, optional note, "Simpan".
+5. Pengaturan Anggaran ("Atur Anggaran"): toggle Mingguan | Bulanan, budget name, total amount, start and end date, scope (pribadi/kelompok), optional per-category limits (Makan, Transportasi, Kos, Laundry, Lainnya, etc.), "Simpan".
+6. Riwayat Transaksi: search, date filter, category filter, type filter, list with category icon, name, date, and colored amount (-Rp25.000 red / +Rp500.000 green), edit and delete (with confirmation dialog).
+7. Laporan Keuangan: tabs Harian | Mingguan | Bulanan, total income, expense, net balance, bar chart per day, donut chart of expense categories with percentage legend, budget vs actual comparison, export to CSV and PDF.
+8. Peringatan Anggaran (Notifications): alert cards (e.g., "Perhatian! Pengeluaranmu sudah mencapai 85% dari anggaran mingguan. Kurangi pengeluaran yang tidak terlalu diperlukan."), remaining budget, progress bar, "Lihat Detail", read/unread state.
+9. Evaluasi Keuangan: remaining money this period, biggest expense category, period-over-period comparison, average daily spending, data-driven recommendations and tips to make the budget last.
+Plus: Akun/Profil, SAKUIN Premium, and Akad & Informasi pages, and Kelompok (groups) pages.
+
+Navigation: Desktop = left sidebar (Beranda, Transaksi, Anggaran, Laporan, Evaluasi, Peringatan, Kelompok, Premium, Akun/Akad, Keluar). Mobile browser = fixed bottom nav (Beranda, Transaksi, Anggaran, Lainnya) with a floating "+" action for adding a transaction; "Lainnya" opens a sheet with the remaining pages. Tablet adapts the layout fluidly. Touch targets at least 44px.
+
+VISUAL DESIGN
+- Palette: emerald primary (#047857 / #059669 / #10B981), mint backgrounds (#ECFDF5 / #D1FAE5), white surfaces, slate text (#0F172A / #475569), amber for warnings, rose for danger/expense. Define as CSS variables / Tailwind theme tokens.
+- Typography: one consistent family (Plus Jakarta Sans or Inter) with a clear scale. Cards with 16-24px radius, soft shadows, generous spacing.
+- Clean, elegant, minimalist. Avoid a cluttered or generic AI-template look: no random gradients everywhere, no emoji overload. Use lucide-react icons consistently.
+- Charts via Recharts (area/bar for income vs expense, donut for categories, radial progress ring for budget), interactive tooltips, Indonesian labels and Rp formatting.
+- Subtle motion (framer-motion / motion): page transitions, card fade-up, progress animation, modal sheets. Respect prefers-reduced-motion.
+- Include skeleton loaders, informative empty states (e.g., "Belum ada transaksi. Catat pengeluaran pertamamu!" with a CTA), error states, and toast feedback.
+- Fully responsive (desktop, tablet, smartphone browser). Accessible: labels, focus rings, contrast, aria attributes.
+
+TECH STACK
+- React + TypeScript + Vite, Tailwind CSS, React Router, Recharts, lucide-react, framer-motion, date-fns + date-fns-tz (or Intl with the Asia/Jakarta timeZone), jsPDF + jspdf-autotable (PDF), native CSV generation with a UTF-8 BOM.
+- Firebase Web SDK (modular): Authentication + Cloud Firestore. Use Build Mode's Firebase integration to provision and connect it; do not hardcode any secret. (The Firebase web config is public by design, but never put private keys, service-account credentials, or any sensitive API key in frontend code; use environment variables.)
+- Firebase is the primary backend. NEVER use localStorage as main storage (only UI preferences such as the last selected workspace).
+- Modular folder structure: /src/app (routing, providers), /src/features/{auth,dashboard,transactions,budgets,reports,evaluation,notifications,groups,premium,account,info}, /src/components/ui, /src/lib (firebase, money, dates, calculations, export), /src/hooks, /src/types, /src/constants (categories, thresholds, copy). Keep the calculation logic in pure, unit-testable functions.
+- Use real-time Firestore listeners (onSnapshot) so every create/edit/delete instantly updates balance, dashboard, charts, reports, and alerts.
+
+AUTHENTICATION (Firebase Authentication)
+- Email/password registration and login, Google Sign-In, logout, forgot/reset password (sendPasswordResetEmail), profile page to edit display name and profile photo (upload to Firebase Storage if available; otherwise accept an avatar chosen from presets or a validated image URL), account settings (change password with re-authentication, delete account request).
+- On first sign-in, create the users/{uid} document.
+- Protected routes: unauthenticated users are redirected to /login; authenticated users skip the login page. Show friendly Indonesian error messages for Firebase auth errors (wrong password, email in use, weak password, network).
+- Make sure the deployed public domain is added to Firebase Authentication "Authorized domains" so Google Sign-In works on the live URL.
+
+MULTI-USER AND MULTI-GROUP (MANDATORY, single URL)
+- One deployment, one URL. Everyone registers their own account. Data shown depends only on the signed-in UID and group memberships.
+- Workspaces: "Pribadi" (only the owner can access) and any number of groups the user belongs to. A workspace switcher in the header controls which data every page shows (dashboard, transactions, budgets, reports, evaluation, notifications).
+- Groups: create a group (name, description) and become Owner. A unique 8-character invite code is generated (unambiguous uppercase alphanumerics, cryptographically random, regenerable and deactivatable by the owner). Another user joins via "Gabung Kelompok" by entering the code. Show the member list with roles.
+- Roles: Owner manages the group (rename, regenerate invite code, remove members, set member permissions, manage group budgets, edit/delete any group transaction, delete the group). Member views group data and records transactions according to the permissions set by the owner (e.g., canAddTransactions, canViewAllTransactions, canEditOwnTransactions); a member can edit/delete only their own transactions when allowed, and can leave the group.
+- Strict isolation: user A never sees user B's personal data; group A never sees group B's data. Enforce this in Firestore Security Rules and in queries (always filter by ownerId or groupId), not only in the UI.
+
+FIRESTORE DATA MODEL (every document carries an owner or group identity)
+- users/{uid}: displayName, email, photoURL, createdAt, updatedAt, lastWorkspace.
+- groups/{groupId}: name, description, ownerId, inviteCode, memberPermissions{canAddTransactions, canViewAllTransactions, canEditOwnTransactions}, createdAt, updatedAt.
+- inviteCodes/{code}: groupId, ownerId, active, createdAt. (Readable only by direct get, never by list.)
+- groupMembers/{groupId_uid}: groupId, uid, role ('owner'|'member'), displayName, photoURL, inviteCode (for member joins), joinedAt.
+- categories/{id}: scope ('personal'|'group'), ownerId, groupId|null, type ('income'|'expense'), name, icon, color, createdAt. The default categories live in constants; this collection holds optional custom ones.
+- budgets/{id}: scope, ownerId, groupId|null, name, amount (int), periodType ('weekly'|'monthly'|'custom'), startDate 'YYYY-MM-DD', endDate 'YYYY-MM-DD', categoryLimits{categoryKey: int}, status ('active'|'archived'), createdBy, createdAt, updatedAt.
+- transactions/{id}: scope, ownerId (the personal owner, or the creator for group records), groupId|null, createdBy, type ('income'|'expense'), amount (int > 0), category (key), dateKey 'YYYY-MM-DD' (Asia/Jakarta calendar day, used for all period queries and grouping), date (Timestamp), note, createdAt, updatedAt.
+- notifications/{userId_budgetId_threshold}: userId, scope, groupId|null, budgetId, threshold (70|85|100|101), level ('info'|'warning'|'danger'), title, message, isRead, createdAt. The deterministic ID guarantees one alert per threshold per budget per period (no repeats).
+- savingsGoals/{id}: scope, ownerId, groupId|null, name, targetAmount, currentAmount, deadline, status, createdAt, updatedAt.
+- premiumSubscriptions/{uid}: userId, plan ('premium_monthly'), priceIdr 19000, status ('active'|'inactive'), simulated: true, startedAt, expiresAt.
+
+Default categories (Indonesian). Expense: Makan dan Minum, Transportasi, Kos, Laundry, Pendidikan, Kesehatan, Hiburan, Belanja, Tagihan, Lainnya. Income: Uang Saku, Kiriman Orang Tua, Beasiswa, Gaji atau Pekerjaan, Bonus, Lainnya.
+
+Create the needed composite indexes (firestore.indexes.json) and document them.
+
+FIREBASE SECURITY RULES (write firestore.rules and deploy them; NEVER use `allow read, write: if true`)
+Implement rules equivalent to the following, and refine them to match the final schema. Validate types, required fields, positive amounts, and immutable ownership fields.
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function uid() { return request.auth.uid; }
+    function memberDoc(groupId) {
+      return get(/databases/$(database)/documents/groupMembers/$(groupId + '_' + uid()));
+    }
+    function isMember(groupId) {
+      return signedIn() && exists(/databases/$(database)/documents/groupMembers/$(groupId + '_' + uid()));
+    }
+    function isOwner(groupId) { return isMember(groupId) && memberDoc(groupId).data.role == 'owner'; }
+    function perms(groupId) {
+      return get(/databases/$(database)/documents/groups/$(groupId)).data.memberPermissions;
+    }
+    function validAmount(a) { return a is int && a > 0 && a <= 1000000000000; }
+
+    match /users/{userId} {
+      allow read, create, update: if signedIn() && uid() == userId;
+      allow delete: if false;
+    }
+
+    match /groups/{groupId} {
+      allow read: if isMember(groupId);
+      allow create: if signedIn() && request.resource.data.ownerId == uid();
+      allow update: if isOwner(groupId) && request.resource.data.ownerId == resource.data.ownerId;
+      allow delete: if isOwner(groupId);
+    }
+
+    match /inviteCodes/{code} {
+      allow get: if signedIn();
+      allow list: if false;
+      allow create: if signedIn() && request.resource.data.ownerId == uid();
+      allow update, delete: if signedIn() && resource.data.ownerId == uid();
+    }
+
+    match /groupMembers/{memberId} {
+      allow read: if signedIn() && (resource.data.uid == uid() || isMember(resource.data.groupId));
+      // Owner bootstraps own membership when creating the group (batched write)
+      allow create: if signedIn() && request.resource.data.uid == uid() && (
+        (request.resource.data.role == 'owner' &&
+          getAfter(/databases/$(database)/documents/groups/$(request.resource.data.groupId)).data.ownerId == uid())
+        ||
+        (request.resource.data.role == 'member' &&
+          get(/databases/$(database)/documents/inviteCodes/$(request.resource.data.inviteCode)).data.groupId == request.resource.data.groupId &&
+          get(/databases/$(database)/documents/inviteCodes/$(request.resource.data.inviteCode)).data.active == true)
+      );
+      allow delete: if signedIn() && (resource.data.uid == uid() && resource.data.role == 'member' || isOwner(resource.data.groupId));
+      allow update: if false;
+    }
+
+    match /transactions/{id} {
+      allow read: if signedIn() && (
+        (resource.data.scope == 'personal' && resource.data.ownerId == uid()) ||
+        (resource.data.scope == 'group' && isMember(resource.data.groupId) &&
+          (isOwner(resource.data.groupId) || resource.data.createdBy == uid() || perms(resource.data.groupId).canViewAllTransactions == true)));
+      allow create: if signedIn() && request.resource.data.createdBy == uid() && validAmount(request.resource.data.amount) && (
+        (request.resource.data.scope == 'personal' && request.resource.data.ownerId == uid()) ||
+        (request.resource.data.scope == 'group' && isMember(request.resource.data.groupId) &&
+          (isOwner(request.resource.data.groupId) || perms(request.resource.data.groupId).canAddTransactions == true)));
+      allow update: if signedIn() && validAmount(request.resource.data.amount)
+        && request.resource.data.scope == resource.data.scope
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.groupId == resource.data.groupId
+        && request.resource.data.createdBy == resource.data.createdBy && (
+        (resource.data.scope == 'personal' && resource.data.ownerId == uid()) ||
+        (resource.data.scope == 'group' && (isOwner(resource.data.groupId) ||
+          (resource.data.createdBy == uid() && perms(resource.data.groupId).canEditOwnTransactions == true))));
+      allow delete: if signedIn() && (
+        (resource.data.scope == 'personal' && resource.data.ownerId == uid()) ||
+        (resource.data.scope == 'group' && (isOwner(resource.data.groupId) ||
+          (resource.data.createdBy == uid() && perms(resource.data.groupId).canEditOwnTransactions == true))));
+    }
+
+    // budgets, categories, savingsGoals: same pattern. Personal: owner only.
+    // Group: members read; only the group owner writes (budgets/categories); savingsGoals per owner decision.
+    // notifications: read/create/update(isRead only)/delete only when userId == uid().
+    // premiumSubscriptions/{userId}: read/write only when userId == uid() and simulated == true
+    //   (document in README that real billing must be moved to a trusted server later).
+  }
+}
+```
+Also write the rules for budgets, categories, savingsGoals, notifications, and premiumSubscriptions following those comments. Add Firestore rules tests (emulator) or a documented manual test matrix proving isolation. Prevent members from reading transactions via queries that omit the groupId/ownerId filter.
+
+CALCULATIONS AND BUSINESS LOGIC (pure, tested functions in /src/lib/calculations.ts)
+- All period boundaries and the "today" calculation use Asia/Jakarta. Weeks run Monday-Sunday. "Bulan ini" runs from the 1st to the last day of the month. Custom ranges are inclusive by dateKey.
+- Total income = sum of income transactions in range. Total expense = sum of expense transactions in range. Net balance = income − expense. Available balance on the dashboard = all-time income − all-time expense for the selected workspace (not limited to the period).
+- Budget used = sum of EXPENSE transactions with dateKey between budget start and end (inclusive) and, for category limits, matching the category; in group scope only the group's transactions. Income is never counted as spending and never reduces a budget; no double-counting. Remaining = amount − used (may be negative). Percentage = used / amount × 100.
+- Average daily spending = used / elapsed days (min 1). Projected remaining money at period end = remaining − (avg daily × remaining days); "safe daily spend" = remaining / remaining days.
+- Editing or deleting a transaction recomputes everything immediately via snapshot listeners.
+- Alerts: thresholds 70% (Peringatan awal, info), 85% (Peringatan penting, warning), 100% (Anggaran habis, danger), >100% (Anggaran terlampaui, danger). Evaluate after every transaction change; write a notification only if the deterministic ID doesn't exist yet (create-only, no repeats). Show the highest active alert on the dashboard and all in the notifications page with unread badge. Handle the case where deleting a transaction drops usage below a threshold (alerts remain in history but the dashboard shows only the current state).
+- Evaluasi Keuangan (computed only from real stored transactions; show an empty state when there is no data): remaining budget, top spending category with its share, comparison with the previous equivalent period (absolute and %), average daily spending, safe daily limit, and rule-based recommendations, e.g.: if projected overspend, suggest the exact daily cap; if a category exceeds its limit or its usual share, suggest reducing it with a computed amount; if there is leftover budget, suggest saving a computed amount to Tabungan. Every recommendation must cite the real numbers behind it.
+- Validation: amount > 0 (integer), required category and date, note max 200 chars, budget start ≤ end, budget amount > 0, no overlapping duplicate-active budget of the same scope and period type unless intended, confirm dialog before any delete. Use react-hook-form + zod with Indonesian error messages.
+- No dummy data may ever mix with real user data. Optionally offer a clearly labeled "Mode Demo" that runs on an in-memory, read-only sample dataset and never touches Firestore.
+
+REPORTS
+- Tabs Harian / Mingguan / Bulanan with a date navigator. Show total income, total expense, net balance, expense trend bar/area chart, category donut with percentages, budget vs actual comparison bars, and a transaction table.
+- Export CSV (client-side, correct escaping, Rp as numbers) and PDF (jsPDF with SAKUIN header, period, summary, category table). Premium-only enhancements (e.g., detailed breakdown) may be gated by the simulated premium status, but basic reports and exports remain available.
+
+PREMIUM (SIMULATION ONLY)
+- Build the "SAKUIN Premium" page like the reference: crown icon, description, checklist (Laporan keuangan lebih detail, Rincian anggaran otomatis, Notifikasi lebih lengkap, Akses ke fitur tabungan digital), price "Rp19.000 / bulan", and a "Berlangganan" button.
+- The button only creates/updates premiumSubscriptions/{uid} with simulated: true and shows a confirmation that this is a simulation. Do NOT integrate real payments and do NOT collect card, bank account, or e-wallet data. Provide "Batalkan Langganan" too. Implement the real gating (usePremium hook) for the premium features: Tabungan (savingsGoals CRUD with progress), detailed reports, automatic budget breakdown suggestion, and extended notification types.
+
+AKAD & INFORMASI PAGE
+- Page "Akad & Informasi" with content based on the reference (Akad Pengguna and Akad Bank sections) as editable content stored in a typed constants file (/src/constants/akadContent.ts), so it is easy to modify. Use neutral wording: explain that the app is a financial-management tool, that the premium subscription is a simulation at this stage, and that SAKUIN does not provide loans, deposits, financing, or hold users' funds, and has no bank partnership. Do NOT make claims about sharia compliance or legal certification, regulatory approval, or bank cooperation; include a note that terms must be reviewed by a qualified legal professional before public launch. Also include Kebijakan Privasi (short), FAQ, and Bantuan/Kontak placeholder.
+
+QUALITY, ERROR HANDLING, PERFORMANCE
+- Loading, empty, and error states on every data view; offline-tolerant (Firestore persistence enabled where supported). Paginate or limit transaction history queries (e.g., 50 per page with "Muat lebih banyak"). Debounced search (search on the client within the loaded range, normalized lowercase). Code-split routes. No console errors. TypeScript strict mode with no `any` in domain code.
+- SPA routing must work on the public URL: configure the hosting so deep links and page refreshes (e.g., /transaksi, /laporan) fall back to index.html instead of returning 404.
+
+TESTING (do this before saying you are done; fix every bug found; do not claim anything works unless you actually verified it)
+Verify and report results for: 1) registration and login, 2) logout and login again, 3) data persisted in Firestore, 4) add/edit/delete transaction, 5) balance calculation, 6) weekly budget calculation (e.g., Rp300.000 budget), 7) alerts at 70/85/100/>100% with no duplicates, 8) reports and CSV/PDF export, 9) group creation, 10) joining via invite code, 11) owner vs member permissions, 12) isolation between users, 13) isolation between groups (including attempts to query another group's data and confirming rules deny it), 14) desktop, tablet, and mobile-browser layouts (360px, 768px, 1280px+), 15) the website loads and works from the single public URL, including a page refresh on a deep link. Also test timezone edge cases (a transaction at 23:30 and 00:30 WIB on a period boundary) and income not affecting budgets. Add unit tests for the calculation functions.
+
+DELIVERABLES
+Working website connected to Firebase and published at a public URL; firestore.rules and firestore.indexes.json deployed; README.md (in Indonesian or English) covering setup, data model, security-rule explanation, test results, known limitations, and next steps toward publication (real payments moved to a trusted server, legal review of the akad content, custom domain, monitoring). Confirm in the README that the project is a website only, with no native mobile or desktop app code.
+
+Start building immediately and continue until everything above is implemented and tested.

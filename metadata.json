@@ -1,0 +1,8 @@
+{
+  "name": "SAKUIN — Kelola Keuangan Anak Kos",
+  "description": "Aplikasi web pengelolaan keuangan pribadi dan kelompok untuk mahasiswa dan anak kos di Indonesia. Kelola anggaran mingguan, catat transaksi harian, pantau peringatan anggaran, dan evaluasi keuangan.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

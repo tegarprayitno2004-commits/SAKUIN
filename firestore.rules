@@ -1,0 +1,499 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core primitives
+    function isSignedIn() {
+      return request.auth != null && request.auth.uid != null;
+    }
+
+    function uid() {
+      return request.auth.uid;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidInviteCode(code) {
+      return code is string && code.size() == 8 && code.matches('^[A-HJ-NP-Z2-9]{8}$');
+    }
+
+    function isValidDateKey(d) {
+      return d is string && d.size() == 10 && d.matches('^\\d{4}-\\d{2}-\\d{2}$');
+    }
+
+    function validAmount(a) {
+      return a is int && a > 0 && a <= 1000000000000;
+    }
+
+    function validNonNegAmount(a) {
+      return a is int && a >= 0 && a <= 1000000000000;
+    }
+
+    // Relational group helpers
+    function memberPath(groupId) {
+      return /databases/$(database)/documents/groupMembers/$(groupId + '_' + uid());
+    }
+
+    function isMember(groupId) {
+      return isSignedIn() && isValidId(groupId) && exists(memberPath(groupId));
+    }
+
+    function memberDoc(groupId) {
+      return get(memberPath(groupId));
+    }
+
+    function isOwner(groupId) {
+      return isMember(groupId) && memberDoc(groupId).data.role == 'owner';
+    }
+
+    function groupDoc(groupId) {
+      return get(/databases/$(database)/documents/groups/$(groupId));
+    }
+
+    function perms(groupId) {
+      return groupDoc(groupId).data.memberPermissions;
+    }
+
+    // Validation Blueprints
+    function isValidUser(data) {
+      return data.keys().hasAll(['displayName', 'email', 'photoURL', 'lastWorkspace', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['displayName', 'email', 'photoURL', 'lastWorkspace', 'createdAt', 'updatedAt'])
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 120
+        && data.photoURL is string && data.photoURL.size() <= 500
+        && data.lastWorkspace is string && data.lastWorkspace.size() >= 1 && data.lastWorkspace.size() <= 128
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidGroup(data) {
+      return data.keys().hasAll(['name', 'description', 'ownerId', 'inviteCode', 'memberPermissions', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['name', 'description', 'ownerId', 'inviteCode', 'memberPermissions', 'createdAt', 'updatedAt'])
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 80
+        && data.description is string && data.description.size() <= 300
+        && isValidId(data.ownerId)
+        && isValidInviteCode(data.inviteCode)
+        && data.memberPermissions is map
+        && data.memberPermissions.keys().hasAll(['canAddTransactions', 'canViewAllTransactions', 'canEditOwnTransactions'])
+        && data.memberPermissions.keys().hasOnly(['canAddTransactions', 'canViewAllTransactions', 'canEditOwnTransactions'])
+        && data.memberPermissions.canAddTransactions is bool
+        && data.memberPermissions.canViewAllTransactions is bool
+        && data.memberPermissions.canEditOwnTransactions is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidInviteCodeDoc(data) {
+      return data.keys().hasAll(['groupId', 'ownerId', 'active', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['groupId', 'ownerId', 'active', 'createdAt', 'updatedAt'])
+        && isValidId(data.groupId)
+        && isValidId(data.ownerId)
+        && data.active is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidGroupMember(data) {
+      return data.keys().hasAll(['groupId', 'uid', 'role', 'displayName', 'photoURL', 'inviteCode', 'joinedAt'])
+        && data.keys().hasOnly(['groupId', 'uid', 'role', 'displayName', 'photoURL', 'inviteCode', 'joinedAt'])
+        && isValidId(data.groupId)
+        && isValidId(data.uid)
+        && data.role in ['owner', 'member']
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80
+        && data.photoURL is string && data.photoURL.size() <= 500
+        && data.inviteCode is string && data.inviteCode.size() <= 8
+        && data.joinedAt is timestamp;
+    }
+
+    function isValidCategory(data) {
+      return data.keys().hasAll(['scope', 'ownerId', 'groupId', 'type', 'name', 'icon', 'color', 'createdAt'])
+        && data.keys().hasOnly(['scope', 'ownerId', 'groupId', 'type', 'name', 'icon', 'color', 'createdAt'])
+        && data.scope in ['personal', 'group']
+        && isValidId(data.ownerId)
+        && ((data.scope == 'personal' && data.groupId == null) || (data.scope == 'group' && isValidId(data.groupId)))
+        && data.type in ['income', 'expense']
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 50
+        && data.icon is string && data.icon.size() >= 1 && data.icon.size() <= 40
+        && data.color is string && data.color.size() >= 1 && data.color.size() <= 30
+        && data.createdAt is timestamp;
+    }
+
+    function isValidBudget(data) {
+      return data.keys().hasAll(['scope', 'ownerId', 'groupId', 'name', 'amount', 'periodType', 'startDate', 'endDate', 'categoryLimits', 'status', 'createdBy', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['scope', 'ownerId', 'groupId', 'name', 'amount', 'periodType', 'startDate', 'endDate', 'categoryLimits', 'status', 'createdBy', 'createdAt', 'updatedAt'])
+        && data.scope in ['personal', 'group']
+        && isValidId(data.ownerId)
+        && ((data.scope == 'personal' && data.groupId == null) || (data.scope == 'group' && isValidId(data.groupId)))
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 80
+        && validAmount(data.amount)
+        && data.periodType in ['weekly', 'monthly', 'custom']
+        && isValidDateKey(data.startDate)
+        && isValidDateKey(data.endDate)
+        && data.startDate <= data.endDate
+        && data.categoryLimits is map && data.categoryLimits.size() <= 30
+        && data.status in ['active', 'archived']
+        && isValidId(data.createdBy)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidTransaction(data) {
+      return data.keys().hasAll(['scope', 'ownerId', 'groupId', 'createdBy', 'createdByName', 'type', 'amount', 'category', 'dateKey', 'date', 'note', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['scope', 'ownerId', 'groupId', 'createdBy', 'createdByName', 'type', 'amount', 'category', 'dateKey', 'date', 'note', 'createdAt', 'updatedAt'])
+        && data.scope in ['personal', 'group']
+        && isValidId(data.ownerId)
+        && ((data.scope == 'personal' && data.groupId == null) || (data.scope == 'group' && isValidId(data.groupId)))
+        && isValidId(data.createdBy)
+        && data.createdByName is string && data.createdByName.size() >= 1 && data.createdByName.size() <= 80
+        && data.type in ['income', 'expense']
+        && validAmount(data.amount)
+        && data.category is string && data.category.size() >= 1 && data.category.size() <= 50
+        && isValidDateKey(data.dateKey)
+        && data.date is timestamp
+        && data.note is string && data.note.size() <= 200
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidNotification(data) {
+      return data.keys().hasAll(['userId', 'scope', 'groupId', 'budgetId', 'threshold', 'level', 'title', 'message', 'isRead', 'createdAt'])
+        && data.keys().hasOnly(['userId', 'scope', 'groupId', 'budgetId', 'threshold', 'level', 'title', 'message', 'isRead', 'createdAt'])
+        && isValidId(data.userId)
+        && data.scope in ['personal', 'group']
+        && ((data.scope == 'personal' && data.groupId == null) || (data.scope == 'group' && isValidId(data.groupId)))
+        && data.budgetId is string && data.budgetId.size() >= 1 && data.budgetId.size() <= 128
+        && data.threshold is int && data.threshold >= 1 && data.threshold <= 1000
+        && data.level in ['info', 'warning', 'danger']
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 120
+        && data.message is string && data.message.size() >= 1 && data.message.size() <= 400
+        && data.isRead is bool
+        && data.createdAt is timestamp;
+    }
+
+    function isValidSavingsGoal(data) {
+      return data.keys().hasAll(['scope', 'ownerId', 'groupId', 'name', 'targetAmount', 'currentAmount', 'deadline', 'status', 'createdBy', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['scope', 'ownerId', 'groupId', 'name', 'targetAmount', 'currentAmount', 'deadline', 'status', 'createdBy', 'createdAt', 'updatedAt'])
+        && data.scope in ['personal', 'group']
+        && isValidId(data.ownerId)
+        && ((data.scope == 'personal' && data.groupId == null) || (data.scope == 'group' && isValidId(data.groupId)))
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 80
+        && validAmount(data.targetAmount)
+        && validNonNegAmount(data.currentAmount)
+        && data.deadline is string && (data.deadline == '' || isValidDateKey(data.deadline))
+        && data.status in ['active', 'completed', 'archived']
+        && isValidId(data.createdBy)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPremiumSubscription(data) {
+      return data.keys().hasAll(['userId', 'plan', 'priceIdr', 'status', 'simulated', 'startedAt', 'expiresAt', 'updatedAt'])
+        && data.keys().hasOnly(['userId', 'plan', 'priceIdr', 'status', 'simulated', 'startedAt', 'expiresAt', 'updatedAt'])
+        && isValidId(data.userId)
+        && data.plan == 'premium_monthly'
+        && data.priceIdr == 19000
+        && data.status in ['active', 'inactive']
+        && data.simulated == true
+        && data.startedAt is timestamp
+        && data.expiresAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // 1. Users (PII isolated to owner only)
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && uid() == userId;
+      allow list: if false;
+      allow create: if isSignedIn() && isValidId(userId) && uid() == userId
+        && isValidUser(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isSignedIn() && isValidId(userId) && uid() == userId
+        && isValidUser(incoming())
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'email', 'photoURL', 'lastWorkspace', 'updatedAt']);
+      allow delete: if isSignedIn() && isValidId(userId) && uid() == userId;
+    }
+
+    // 2. Groups
+    match /groups/{groupId} {
+      allow get: if isValidId(groupId) && isMember(groupId);
+      allow list: if false;
+      allow create: if isSignedIn() && isValidId(groupId)
+        && isValidGroup(incoming())
+        && incoming().ownerId == uid()
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(groupId)
+        && isValidGroup(incoming())
+        && isOwner(groupId)
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'description', 'inviteCode', 'memberPermissions', 'updatedAt']);
+      allow delete: if isValidId(groupId) && isOwner(groupId);
+    }
+
+    // 3. Invite Codes (direct get only, never listable)
+    match /inviteCodes/{code} {
+      allow get: if isSignedIn() && isValidInviteCode(code);
+      allow list: if false;
+      allow create: if isSignedIn() && isValidInviteCode(code)
+        && isValidInviteCodeDoc(incoming())
+        && incoming().ownerId == uid()
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && getAfter(/databases/$(database)/documents/groups/$(incoming().groupId)).data.ownerId == uid();
+      allow update: if isSignedIn() && isValidInviteCode(code)
+        && isValidInviteCodeDoc(incoming())
+        && existing().ownerId == uid()
+        && incoming().ownerId == existing().ownerId
+        && incoming().groupId == existing().groupId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['active', 'updatedAt']);
+      allow delete: if isSignedIn() && isValidInviteCode(code) && existing().ownerId == uid();
+    }
+
+    // 4. Group Members ({groupId}_{uid})
+    match /groupMembers/{memberId} {
+      allow get: if isSignedIn() && isValidId(memberId)
+        && (existing().uid == uid() || isMember(existing().groupId));
+      allow list: if isSignedIn()
+        && (existing().uid == uid() || isMember(existing().groupId));
+      allow create: if isSignedIn() && isValidId(memberId)
+        && isValidGroupMember(incoming())
+        && memberId == incoming().groupId + '_' + uid()
+        && incoming().uid == uid()
+        && incoming().joinedAt == request.time
+        && (
+          (incoming().role == 'owner'
+            && getAfter(/databases/$(database)/documents/groups/$(incoming().groupId)).data.ownerId == uid())
+          ||
+          (incoming().role == 'member'
+            && isValidInviteCode(incoming().inviteCode)
+            && get(/databases/$(database)/documents/inviteCodes/$(incoming().inviteCode)).data.groupId == incoming().groupId
+            && get(/databases/$(database)/documents/inviteCodes/$(incoming().inviteCode)).data.active == true)
+        );
+      allow update: if isSignedIn() && isValidId(memberId)
+        && isValidGroupMember(incoming())
+        && existing().uid == uid()
+        && incoming().uid == existing().uid
+        && incoming().groupId == existing().groupId
+        && incoming().role == existing().role
+        && incoming().inviteCode == existing().inviteCode
+        && incoming().joinedAt == existing().joinedAt
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL']);
+      allow delete: if isSignedIn() && isValidId(memberId)
+        && ((existing().uid == uid() && existing().role == 'member') || isOwner(existing().groupId));
+    }
+
+    // 5. Custom Categories
+    match /categories/{categoryId} {
+      allow get: if isSignedIn() && isValidId(categoryId) && (
+        (existing().scope == 'personal' && existing().ownerId == uid()) ||
+        (existing().scope == 'group' && isMember(existing().groupId))
+      );
+      allow list: if isSignedIn() && (
+        (existing().scope == 'personal' && existing().ownerId == uid()) ||
+        (existing().scope == 'group' && isMember(existing().groupId))
+      );
+      allow create: if isSignedIn() && isValidId(categoryId)
+        && isValidCategory(incoming())
+        && incoming().createdAt == request.time
+        && (
+          (incoming().scope == 'personal' && incoming().ownerId == uid()) ||
+          (incoming().scope == 'group' && isOwner(incoming().groupId) && incoming().ownerId == uid())
+        );
+      allow update: if false;
+      allow delete: if isSignedIn() && isValidId(categoryId) && (
+        (existing().scope == 'personal' && existing().ownerId == uid()) ||
+        (existing().scope == 'group' && isOwner(existing().groupId))
+      );
+    }
+
+    // 6. Budgets
+    match /budgets/{budgetId} {
+      allow get: if isSignedIn() && isValidId(budgetId) && (
+        (existing().scope == 'personal' && existing().ownerId == uid()) ||
+        (existing().scope == 'group' && isMember(existing().groupId))
+      );
+      allow list: if isSignedIn() && (
+        (existing().scope == 'personal' && existing().ownerId == uid()) ||
+        (existing().scope == 'group' && isMember(existing().groupId))
+      );
+      allow create: if isSignedIn() && isValidId(budgetId)
+        && isValidBudget(incoming())
+        && incoming().createdBy == uid()
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (
+          (incoming().scope == 'personal' && incoming().ownerId == uid()) ||
+          (incoming().scope == 'group' && isOwner(incoming().groupId) && incoming().ownerId == uid())
+        );
+      allow update: if isSignedIn() && isValidId(budgetId)
+        && isValidBudget(incoming())
+        && incoming().scope == existing().scope
+        && incoming().ownerId == existing().ownerId
+        && incoming().groupId == existing().groupId
+        && incoming().createdBy == existing().createdBy
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'amount', 'periodType', 'startDate', 'endDate', 'categoryLimits', 'status', 'updatedAt'])
+        && (
+          (existing().scope == 'personal' && existing().ownerId == uid()) ||
+          (existing().scope == 'group' && isOwner(existing().groupId))
+        );
+      allow delete: if isSignedIn() && isValidId(budgetId) && (
+        (existing().scope == 'personal' && existing().ownerId == uid()) ||
+        (existing().scope == 'group' && isOwner(existing().groupId))
+      );
+    }
+
+    // 7. Transactions
+    match /transactions/{transactionId} {
+      allow get: if isSignedIn() && isValidId(transactionId) && (
+        (existing().scope == 'personal' && existing().ownerId == uid()) ||
+        (existing().scope == 'group' && isMember(existing().groupId) && (
+          isOwner(existing().groupId) || existing().createdBy == uid() || perms(existing().groupId).canViewAllTransactions == true
+        ))
+      );
+      allow list: if isSignedIn() && (
+        (existing().scope == 'personal' && existing().ownerId == uid()) ||
+        (existing().scope == 'group' && isMember(existing().groupId) && (
+          isOwner(existing().groupId) || existing().createdBy == uid() || perms(existing().groupId).canViewAllTransactions == true
+        ))
+      );
+      allow create: if isSignedIn() && isValidId(transactionId)
+        && isValidTransaction(incoming())
+        && incoming().createdBy == uid()
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (
+          (incoming().scope == 'personal' && incoming().ownerId == uid()) ||
+          (incoming().scope == 'group' && isMember(incoming().groupId) && incoming().ownerId == uid() && (
+            isOwner(incoming().groupId) || perms(incoming().groupId).canAddTransactions == true
+          ))
+        );
+      allow update: if isSignedIn() && isValidId(transactionId)
+        && isValidTransaction(incoming())
+        && incoming().scope == existing().scope
+        && incoming().ownerId == existing().ownerId
+        && incoming().groupId == existing().groupId
+        && incoming().createdBy == existing().createdBy
+        && incoming().createdByName == existing().createdByName
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['type', 'amount', 'category', 'dateKey', 'date', 'note', 'updatedAt'])
+        && (
+          (existing().scope == 'personal' && existing().ownerId == uid()) ||
+          (existing().scope == 'group' && isMember(existing().groupId) && (
+            isOwner(existing().groupId) || (existing().createdBy == uid() && perms(existing().groupId).canEditOwnTransactions == true)
+          ))
+        );
+      allow delete: if isSignedIn() && isValidId(transactionId) && (
+        (existing().scope == 'personal' && existing().ownerId == uid()) ||
+        (existing().scope == 'group' && isMember(existing().groupId) && (
+          isOwner(existing().groupId) || (existing().createdBy == uid() && perms(existing().groupId).canEditOwnTransactions == true)
+        ))
+      );
+    }
+
+    // 8. Notifications (deterministic ID per user + budget + threshold)
+    match /notifications/{notificationId} {
+      allow get: if isSignedIn() && isValidId(notificationId) && existing().userId == uid();
+      allow list: if isSignedIn() && existing().userId == uid();
+      allow create: if isSignedIn() && isValidId(notificationId)
+        && isValidNotification(incoming())
+        && incoming().userId == uid()
+        && incoming().createdAt == request.time
+        && (
+          (incoming().scope == 'personal' && incoming().groupId == null) ||
+          (incoming().scope == 'group' && isMember(incoming().groupId))
+        );
+      allow update: if isSignedIn() && isValidId(notificationId)
+        && isValidNotification(incoming())
+        && existing().userId == uid()
+        && incoming().userId == existing().userId
+        && incoming().scope == existing().scope
+        && incoming().groupId == existing().groupId
+        && incoming().budgetId == existing().budgetId
+        && incoming().threshold == existing().threshold
+        && incoming().level == existing().level
+        && incoming().title == existing().title
+        && incoming().message == existing().message
+        && incoming().createdAt == existing().createdAt
+        && incoming().diff(existing()).affectedKeys().hasOnly(['isRead']);
+      allow delete: if isSignedIn() && isValidId(notificationId) && existing().userId == uid();
+    }
+
+    // 9. Savings Goals (Premium feature)
+    match /savingsGoals/{goalId} {
+      allow get: if isSignedIn() && isValidId(goalId) && (
+        (existing().scope == 'personal' && existing().ownerId == uid()) ||
+        (existing().scope == 'group' && isMember(existing().groupId))
+      );
+      allow list: if isSignedIn() && (
+        (existing().scope == 'personal' && existing().ownerId == uid()) ||
+        (existing().scope == 'group' && isMember(existing().groupId))
+      );
+      allow create: if isSignedIn() && isValidId(goalId)
+        && isValidSavingsGoal(incoming())
+        && incoming().createdBy == uid()
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (
+          (incoming().scope == 'personal' && incoming().ownerId == uid()) ||
+          (incoming().scope == 'group' && isOwner(incoming().groupId) && incoming().ownerId == uid())
+        );
+      allow update: if isSignedIn() && isValidId(goalId)
+        && isValidSavingsGoal(incoming())
+        && incoming().scope == existing().scope
+        && incoming().ownerId == existing().ownerId
+        && incoming().groupId == existing().groupId
+        && incoming().createdBy == existing().createdBy
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'targetAmount', 'currentAmount', 'deadline', 'status', 'updatedAt'])
+        && (
+          (existing().scope == 'personal' && existing().ownerId == uid()) ||
+          (existing().scope == 'group' && isOwner(existing().groupId))
+        );
+      allow delete: if isSignedIn() && isValidId(goalId) && (
+        (existing().scope == 'personal' && existing().ownerId == uid()) ||
+        (existing().scope == 'group' && isOwner(existing().groupId))
+      );
+    }
+
+    // 10. Premium Subscriptions (Simulation only)
+    match /premiumSubscriptions/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && uid() == userId;
+      allow list: if false;
+      allow create: if isSignedIn() && isValidId(userId) && uid() == userId
+        && isValidPremiumSubscription(incoming())
+        && incoming().userId == uid()
+        && incoming().startedAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isSignedIn() && isValidId(userId) && uid() == userId
+        && isValidPremiumSubscription(incoming())
+        && incoming().userId == existing().userId
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'startedAt', 'expiresAt', 'updatedAt']);
+      allow delete: if false;
+    }
+  }
+}

@@ -1,0 +1,566 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Profil pengguna terdaftar SAKUIN",
+      "type": "object",
+      "properties": {
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "description": "Nama tampilan pengguna"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "minLength": 3,
+          "maxLength": 120,
+          "description": "Alamat email pengguna"
+        },
+        "photoURL": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "URL foto profil atau avatar"
+        },
+        "lastWorkspace": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^(personal|[a-zA-Z0-9_\\-]+)$",
+          "description": "Workspace terakhir yang dipilih ('personal' atau groupId)"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Waktu pembuatan akun"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Waktu pembaruan profil terakhir"
+        }
+      },
+      "required": ["displayName", "email", "photoURL", "lastWorkspace", "createdAt", "updatedAt"]
+    },
+    "Group": {
+      "title": "Group",
+      "description": "Kelompok keuangan bersama (misalnya anak kos sekamar atau kepanitiaan)",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "inviteCode": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 8,
+          "pattern": "^[A-HJ-NP-Z2-9]{8}$"
+        },
+        "memberPermissions": {
+          "type": "object",
+          "description": "Izin anggota kelompok"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["name", "description", "ownerId", "inviteCode", "memberPermissions", "createdAt", "updatedAt"]
+    },
+    "InviteCode": {
+      "title": "InviteCode",
+      "description": "Kode undangan 8 karakter untuk bergabung ke kelompok",
+      "type": "object",
+      "properties": {
+        "groupId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["groupId", "ownerId", "active", "createdAt", "updatedAt"]
+    },
+    "GroupMember": {
+      "title": "GroupMember",
+      "description": "Keanggotaan pengguna dalam sebuah kelompok",
+      "type": "object",
+      "properties": {
+        "groupId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["owner", "member"]
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "photoURL": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "inviteCode": {
+          "type": "string",
+          "maxLength": 8
+        },
+        "joinedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["groupId", "uid", "role", "displayName", "photoURL", "inviteCode", "joinedAt"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Kategori kustom pemasukan atau pengeluaran",
+      "type": "object",
+      "properties": {
+        "scope": {
+          "type": "string",
+          "enum": ["personal", "group"]
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "groupId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "type": {
+          "type": "string",
+          "enum": ["income", "expense"]
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 50
+        },
+        "icon": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "color": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 30
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["scope", "ownerId", "groupId", "type", "name", "icon", "color", "createdAt"]
+    },
+    "Budget": {
+      "title": "Budget",
+      "description": "Anggaran mingguan, bulanan, atau kustom",
+      "type": "object",
+      "properties": {
+        "scope": {
+          "type": "string",
+          "enum": ["personal", "group"]
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "groupId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "amount": {
+          "type": "integer"
+        },
+        "periodType": {
+          "type": "string",
+          "enum": ["weekly", "monthly", "custom"]
+        },
+        "startDate": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 10,
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "endDate": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 10,
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "categoryLimits": {
+          "type": "object"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "archived"]
+        },
+        "createdBy": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "scope",
+        "ownerId",
+        "groupId",
+        "name",
+        "amount",
+        "periodType",
+        "startDate",
+        "endDate",
+        "categoryLimits",
+        "status",
+        "createdBy",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Catatan pemasukan atau pengeluaran dalam rupiah integer",
+      "type": "object",
+      "properties": {
+        "scope": {
+          "type": "string",
+          "enum": ["personal", "group"]
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "groupId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "createdBy": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdByName": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "type": {
+          "type": "string",
+          "enum": ["income", "expense"]
+        },
+        "amount": {
+          "type": "integer"
+        },
+        "category": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 50
+        },
+        "dateKey": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 10,
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "date": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "scope",
+        "ownerId",
+        "groupId",
+        "createdBy",
+        "createdByName",
+        "type",
+        "amount",
+        "category",
+        "dateKey",
+        "date",
+        "note",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "Peringatan ambang batas anggaran deterministik",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "scope": {
+          "type": "string",
+          "enum": ["personal", "group"]
+        },
+        "groupId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "budgetId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "threshold": {
+          "type": "integer"
+        },
+        "level": {
+          "type": "string",
+          "enum": ["info", "warning", "danger"]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 400
+        },
+        "isRead": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["userId", "scope", "groupId", "budgetId", "threshold", "level", "title", "message", "isRead", "createdAt"]
+    },
+    "SavingsGoal": {
+      "title": "SavingsGoal",
+      "description": "Target tabungan digital untuk pengguna Premium",
+      "type": "object",
+      "properties": {
+        "scope": {
+          "type": "string",
+          "enum": ["personal", "group"]
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "groupId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "targetAmount": {
+          "type": "integer"
+        },
+        "currentAmount": {
+          "type": "integer"
+        },
+        "deadline": {
+          "type": "string",
+          "maxLength": 10
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "completed", "archived"]
+        },
+        "createdBy": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "scope",
+        "ownerId",
+        "groupId",
+        "name",
+        "targetAmount",
+        "currentAmount",
+        "deadline",
+        "status",
+        "createdBy",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "PremiumSubscription": {
+      "title": "PremiumSubscription",
+      "description": "Status langganan SAKUIN Premium (Simulasi)",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "plan": {
+          "type": "string",
+          "enum": ["premium_monthly"]
+        },
+        "priceIdr": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "inactive"]
+        },
+        "simulated": {
+          "type": "boolean"
+        },
+        "startedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["userId", "plan", "priceIdr", "status", "simulated", "startedAt", "expiresAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Profil dan preferensi workspace milik pengguna"
+    },
+    "/groups/{groupId}": {
+      "schema": { "$ref": "#/entities/Group" },
+      "description": "Data kelompok keuangan dan konfigurasi izin anggota"
+    },
+    "/inviteCodes/{code}": {
+      "schema": { "$ref": "#/entities/InviteCode" },
+      "description": "Pemetaan kode undangan kelompok (hanya direct get)"
+    },
+    "/groupMembers/{memberId}": {
+      "schema": { "$ref": "#/entities/GroupMember" },
+      "description": "Keanggotaan kelompok dengan ID deterministik {groupId}_{uid}"
+    },
+    "/categories/{categoryId}": {
+      "schema": { "$ref": "#/entities/Category" },
+      "description": "Kategori kustom pemasukan atau pengeluaran"
+    },
+    "/budgets/{budgetId}": {
+      "schema": { "$ref": "#/entities/Budget" },
+      "description": "Anggaran mingguan, bulanan, atau kustom"
+    },
+    "/transactions/{transactionId}": {
+      "schema": { "$ref": "#/entities/Transaction" },
+      "description": "Transaksi pemasukan dan pengeluaran"
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/Notification" },
+      "description": "Notifikasi ambang batas anggaran dengan ID deterministik"
+    },
+    "/savingsGoals/{goalId}": {
+      "schema": { "$ref": "#/entities/SavingsGoal" },
+      "description": "Target tabungan digital pengguna Premium"
+    },
+    "/premiumSubscriptions/{userId}": {
+      "schema": { "$ref": "#/entities/PremiumSubscription" },
+      "description": "Status simulasi langganan SAKUIN Premium"
+    }
+  }
+}
